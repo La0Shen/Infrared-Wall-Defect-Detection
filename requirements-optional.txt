@@ -1,0 +1,8 @@
+# 非必要依赖:按需安装(pip install -r requirements-optional.txt)
+
+# 仅 Windows:DJI Thermal SDK,解析 R-JPEG 真实温度
+# io.py 读取 .jpg 时使用;未安装则退回灰度读取(伪温度,仅调试)
+dji-thermal-sdk
+
+# 运行单元测试(66 项 pytest 用例,以实际为准)
+pytest>=7

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>外墙热红外缺陷检测 · 方案一全貌(思维导图)</title>
+<style>
+  body { margin:0; font-family:"Microsoft YaHei","PingFang SC",sans-serif; background:#f6f8fa; color:#1f2328; }
+  header { padding:20px 24px 4px; text-align:center; }
+  h1 { margin:0 0 8px; font-size:22px; }
+  .hint { color:#57606a; font-size:13px; line-height:1.7; }
+  #map-wrap { position:relative; height:74vh; min-height:420px; background:#fff; border-top:1px solid #e4e8ec; border-bottom:1px solid #e4e8ec; overflow:hidden; }
+  #canvas { position:absolute; left:0; top:0; width:0; height:0; transform-origin:0 0; }
+  #conn { position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; pointer-events:none; }
+  .node { position:absolute; background:#fff; border:1px solid #e3e8ee; border-left-width:4px; border-radius:8px; padding:6px 12px 6px 10px; font-size:13.5px; line-height:1.5; white-space:nowrap; box-shadow:0 1px 3px rgba(31,35,40,.08); -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none; cursor:default; }
+  .node.root { background:#1f6feb; color:#fff; font-size:16px; font-weight:700; border:none; padding:10px 20px; box-shadow:0 2px 8px rgba(31,111,235,.35); }
+  .node.sec { font-weight:600; background:#fbfdff; font-size:14px; }
+  .node .tgl { position:absolute; right:-10px; top:50%; margin-top:-9px; width:18px; height:18px; border-radius:50%; background:#fff; border:1.5px solid #c9d1d9; color:#57606a; font-size:11px; line-height:14px; text-align:center; cursor:pointer; -webkit-user-select:none; user-select:none; z-index:2; }
+  .node .tgl:hover { border-color:#0969da; color:#0969da; }
+  .toolbar { position:absolute; right:14px; top:12px; z-index:5; }
+  .toolbar button { border:1px solid #d0d7de; background:#fff; border-radius:6px; padding:4px 10px; margin-left:6px; font-size:12px; color:#24292f; cursor:pointer; }
+  .toolbar button:hover { background:#f3f4f6; }
+  .glossary { max-width:980px; margin:0 auto; padding:4px 24px 48px; }
+  .glossary h2 { font-size:17px; margin:26px 0 14px; padding-left:10px; border-left:4px solid #0969da; }
+  dl.gloss { display:grid; grid-template-columns:120px 1fr; gap:8px 18px; margin:0; }
+  dl.gloss dt { font-weight:700; color:#0969da; }
+  dl.gloss dd { margin:0; font-size:14px; line-height:1.65; }
+  footer { max-width:980px; margin:0 auto; padding:0 24px 36px; color:#6e7781; font-size:12.5px; line-height:1.8; text-align:center; }
+  code { background:#eef1f4; padding:1px 5px; border-radius:4px; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>外墙热红外缺陷检测 · 方案一全貌</h1>
+  <div class="hint">本图对应<b>本仓库实际实现的方案一(单帧基线)</b>。内容按工程流程自左向右逐步排列,后续步骤位于上一步之后;点击节点右侧圆点 <b>折叠/展开</b>,按住空白处拖动 <b>平移</b>,滚轮 <b>缩放</b>,双击空白处 <b>适应全图</b>。名词解释在本页下方。</div>
+</header>
+
+<div id="map-wrap">
+  <div class="toolbar">
+    <button id="btn-in" title="放大">＋</button>
+    <button id="btn-out" title="缩小">－</button>
+    <button id="btn-fit" title="显示全部内容">适应全图</button>
+    <button id="btn-read" title="按高度缩放,从左端开始阅读">适合阅读</button>
+    <button id="btn-expand" title="全部展开">展开全部</button>
+    <button id="btn-collapse" title="全部折叠">折叠全部</button>
+  </div>
+  <div id="canvas">
+    <svg id="conn"></svg>
+  </div>
+</div>
+
+<section class="glossary">
+  <h2>名词解释</h2>
+  <dl class="gloss">
+    <dt>空鼓</dt><dd>外墙瓷砖/抹灰层与墙体脱开,中间形成空气层。现场以锤击听空响验证。</dd>
+    <dt>渗水</dt><dd>水渗入墙体,常见于裂缝、防水层失效处,墙体发霉、起皮。</dd>
+    <dt>热红外</dt><dd>物体温度越高,发出的红外辐射越强。热像仪接收红外辐射并换算为温度,生成温度图。</dd>
+    <dt>R-JPEG</dt><dd>大疆无人机专用照片格式,每个像素除图像外还记录温度。</dd>
+    <dt>发射率 ε</dt><dd>物体发射红外辐射的能力(0~1)。测量温度需按材质设置正确的 ε,否则读数偏差。</dd>
+    <dt>GSD</dt><dd>一个像素对应的实际墙面尺寸(米/像素)。Mavic 3T 约为拍摄距离÷540。</dd>
+    <dt>去趋势</dt><dd>从温度图减去大范围平滑背景(高斯模糊结果),保留局部温度异常。</dd>
+    <dt>MAD</dt><dd>中位数绝对偏差,一种稳健的噪声强度估计,不易受个别极端值影响。×1.4826 用于换算为与标准差一致的尺度。</dd>
+    <dt>z 分数</dt><dd>异常强度与噪声强度之比。z=1.5 表示异常强度为噪声强度的 1.5 倍。</dd>
+    <dt>窗户掩膜</dt><dd>窗户在温度图上与渗水同为冷斑,会被误报;先把窗户区域识别出来、填成背景再检测,这块区域就不参与判决。</dd>
+    <dt>边界带</dt><dd>照片最外一圈当作「墙」、不参与检测。画面边缘没有旁边的墙可比,最容易出假斑块。</dd>
+    <dt>形状渗漏</dt><dd>不看温差、只看形状的渗水判定:又方又细长的冷斑,形状本身就说明是渗水缝。</dd>
+  </dl>
+</section>
+
+<footer>
+  说明:本图由 <code>总体方案.md</code>(技术方案)、<code>总体方案-通俗版.md</code>(通俗大纲)
+  与 <code>算法说明.md</code>(算法落地)整理而来,完整表格与代码细节见这几个文件。
+  图中标注「本仓库未实现」的是原始设计中的方案二(多时相+PCA),本仓库只做方案一。
+  本文件零依赖、单文件,<b>离线即可打开</b>。
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ===== 思维导图数据:按工程流程从左到右排列 ===== */
+  var DATA = ["外墙热红外缺陷检测 · 方案一(本仓库实现)", [
+    ["1. 背景与原理", [
+      "病害一·空鼓:饰面层与基层脱开夹空气层,成片掉落有安全风险",
+      "病害二·渗水:水进入墙体,引起霉变、起皮、钢筋锈蚀",
+      "红外辐射原理:物体温度越高红外辐射越强;热像仪把辐射换算成温度图",
+      "空鼓的温度特征:空气层把饰面层与基层热隔离,失去基层这个热汇",
+      "→ 热惯量小:对温度变化响应更快、幅度更大",
+      "空鼓·升温时段(白天):比正常墙面热1~3℃ → 热斑",
+      "空鼓·降温时段(夜间):散热更快反而偏冷 → 冷斑(符号随时相翻转)",
+      "渗水的温度特征:水分蒸发吸热 → 表面偏冷(湿墙热惯量亦增大,白天同向偏冷)",
+      "检测目标:在温度图中定位明显偏热或偏冷的小块区域",
+      "拍摄时机:晴天下午抓空鼓(升温段温差最大);雨后清晨抓渗水(蒸发最旺);要求低风速"
+    ]],
+    ["2. 数据采集", [
+      "方案一(本仓库实现):拍摄1张,单次飞行",
+      "方案二(本仓库未实现):拍摄3~4张(日出/上午/下午/傍晚),同一航点重复飞行",
+      "拍摄时机:晴天下午(空鼓)、雨后清晨(渗水)",
+      "相机设置:固定发射率ε=0.90、关闭自动增益、固定量程,设置完全一致",
+      "天气要求:晴天、无云、低风(风速不宜大于4m/s)",
+      "设置一致的原因:温度读数需可互相比较"
+    ]],
+    ["3. 数据预处理", [
+      "① 读温度:从R-JPEG读取各像素温度T(x,y),单位℃",
+      "② 发射率校正:统一按ε=0.90计算,后续按材质细分(砖0.90/混凝土0.92)",
+      "③ 去噪:3×3中值滤波",
+      "④ 计算GSD:约等于拍摄距离/540(m/px)",
+      "⑤ 配准(仅方案二,本仓库未实现):由可见光照片计算单应矩阵对齐各时相",
+      "对应伪代码:read_temps、medianBlur"
+    ]],
+    ["4. 方案一:单帧检测(基线,本仓库实现)", [
+      "① 去趋势:T_anom = T − 高斯模糊(T,σ),σ为缺陷半径的2~3倍(σ=20px)",
+      "② 噪声估计:σ_noise = MAD(T_anom)×1.4826(对离群值稳健)",
+      "③ 标准化:z = T_anom / σ_noise",
+      "④ 阈值:|z|>1.5;z为正→热斑(空鼓候选),z为负→冷斑(渗水候选/窗户)",
+      "⑤ 连通域:提取斑块,剔除面积小于50px的",
+      "⑥ 边界带(本项目新增):照片最外15px当作墙、不参与检测",
+      "⑦ 特征提取与分类(接第6步)",
+      "边界带只扣检测掩膜、不改像素值——外扩填墙会在边界造出温度阶跃,反而炸出更多伪影",
+      "边界带是「检测口径」而非「形状口径」:被它切过的斑块轮廓会被切直,形状不可信,回查完整连通域",
+      "对应伪代码:run_single、interior_mask"
+    ]],
+    ["5. 方案二:多时相+PCA检测(本仓库未实现)", [
+      "★ 本仓库未实现:本节仅作原始设计存档",
+      "依据:正常墙面温度随太阳辐射变化;空鼓区热惯量小、升降温都更快;渗水区蒸发吸热偏冷",
+      "① 堆数据:将N张温度图堆叠为矩阵X(M×N),M为像素数,N为时相数",
+      "② 中心化:Xc = X − 每像素时间均值",
+      "③ 分解:SVD,Xc = U·Σ·Vᵀ",
+      "④ 分量图:U各列reshape回图像;时间载荷:Vᵀ各行",
+      "⑤ 丢弃PC1:对应各像素同步变化部分(太阳日变化、柱子、窗户等静态背景)",
+      "⑥ 保留PC2、PC3:对应缺陷区域的变化模式,按时间载荷区分空鼓与渗水",
+      "⑦ 对各分量图:z = 分量/MAD,|z|>1.5,提取斑块(接第6步)",
+      "对应伪代码:run_pca"
+    ]],
+    ["6. 特征提取与分类", [
+      "特征指标:局部温差ΔT、边界锐度、内部均匀度、矩形度、伸长率",
+      "判定按序进行、命中即返回,顺序有意义",
+      "窗户(非缺陷):矩形度>0.85 且 ΔT<−5℃",
+      "形状渗漏(本项目新增):矩形度>0.80 且 纵横比>2.0 —— 不看ΔT",
+      "空鼓:ΔT>+1.5℃ 且 矩形度<0.8",
+      "渗水:ΔT<−1.5℃ 且 伸长率>1.5",
+      "定性条件(边界锐利/边界弥散/长轴偏垂直)默认关闭,别当成生效条件",
+      "其余:特征不明,交人工复核",
+      "窗户掩膜(本仓库实现):两遍式——冷侧找窗 → 自适应生长盖过渡带 → NS修复填平 → 第二遍排除",
+      "原设计的可见光目标检测+三维凹陷二次确认:本仓库未实现",
+      "对应伪代码:extract_features、classify"
+    ]],
+    ["7. 现场验证与阈值回调", [
+      "空鼓:现场锤击听空响比对",
+      "渗水:雨后观察痕迹、湿度计比对",
+      "窗户:统计窗户是否被正确判为非缺陷",
+      "统计指标:检出率、误报率",
+      "回调参数:z阈值、ΔT阈值、矩形度阈值、σ、边界带宽度、形状渗漏阈值",
+      "流程:处理→现场核实→调整参数,反复迭代"
+    ]],
+    ["8. 方案选择(切换条件)", [
+      "★ 本仓库未实现:本节为原始设计,本仓库只有方案一,除第1行外均不适用",
+      "单帧对比度足够且检出率/误报率达标→使用方案一",
+      "对比度不足(阴天/冬季/窗户与缺陷混淆)→使用方案二",
+      "方案二配准失败或天气不允许→退回方案一",
+      "两方案结果不一致→以人工复核+可见光/三维为准"
+    ]],
+    ["9. 参数一览", [
+      "左值为原始初值,右值为本仓库config/defaults.yaml现值,以现值为准",
+      "发射率ε=0.90(现值同)",
+      "去趋势σ=2~3×缺陷半径 → 现值detrend_sigma_px=20",
+      "噪声估计=MAD×1.4826",
+      "z阈值=2.5 → 现值1.5(现场回调)",
+      "最小斑块面积=25px → 现值50(现场回调)",
+      "空鼓ΔT>+1.5℃;渗水ΔT<−1.5℃;窗户:矩形度>0.85且ΔT<−5℃",
+      "边界带宽度(新增):border_ignore_px=15",
+      "形状渗漏(新增):矩形度>0.80 且 纵横比>2.0;可选ΔT门默认关(−0.8)",
+      "窗区块宽高比(收紧):aspect_min/aspect_max=0.15/6.67",
+      "PCA保留分量:PC2、PC3 —— 本仓库未实现"
+    ]],
+    ["10. 叠加图显示过滤 display(本项目新增)", [
+      "目的:叠加图上白框噪声太多时,只画想看的类别",
+      "每类一个0/1开关:show_window / show_hollow / show_seepage / show_reject",
+      "每类一个长度下限min_len_*_px:边框max(宽,高)小于它就不画",
+      "只影响overlay.png;defects.csv、summary.json(含counts)、掩膜文件一律全量",
+      "编号契约:图上编号=缺陷列表下标=CSV的index列=掩膜文件名,被过滤的只跳过绘制不重编号",
+      "故图上编号可能不连续——这是刻意的,便于对着CSV核对",
+      "对应代码:pipeline.render_overlay、config.DisplayParams"
+    ]]
+  ]];
+
+  /* ===== 配置 ===== */
+  var COLORS = ['#2563eb', '#059669', '#dc2626', '#7c3aed', '#0e7490', '#d97706', '#db2777', '#65a30d', '#9333ea'];
+  var H_GAP = 60, V_GAP = 9, MARGIN = 30, INDENT = 20;
+  var MIN_K = 0.2, MAX_K = 3;
+
+  /* ===== 元素 ===== */
+  var wrap = document.getElementById('map-wrap');
+  var canvas = document.getElementById('canvas');
+  var connEl = document.getElementById('conn');
+
+  /* ===== 解析数据 → 节点树 ===== */
+  function parse(d, depth, color) {
+    var isStr = (typeof d === 'string');
+    var node = { t: isStr ? d : d[0], c: [], depth: depth, color: color, collapsed: false, el: null, tgl: null, x: 0, y: 0, w: 0, h: 0 };
+    if (!isStr && d[1]) {
+      for (var i = 0; i < d[1].length; i++) node.c.push(parse(d[1][i], depth + 1, color));
+    }
+    return node;
+  }
+
+  var root = parse(DATA, 0, '#1f6feb');
+  (function assignColors(n) {
+    for (var i = 0; i < n.c.length; i++) {
+      n.c[i].color = COLORS[i % COLORS.length];
+      assignColors(n.c[i]);
+    }
+  })(root);
+
+  /* ===== 创建节点 DOM 并测量尺寸(文字单行横排) ===== */
+  function buildEls(n) {
+    var el = document.createElement('div');
+    el.className = 'node' + (n.depth === 0 ? ' root' : (n.depth === 1 ? ' sec' : ''));
+    el.style.borderLeftColor = n.color;
+    el.textContent = n.t;
+    canvas.appendChild(el);
+    n.el = el;
+    n.w = el.offsetWidth;
+    n.h = el.offsetHeight;
+    if (n.c.length) {
+      var b = document.createElement('span');
+      b.className = 'tgl';
+      b.textContent = '−';
+      b.title = '折叠 / 展开';
+      b.onclick = function (e) {
+        e.stopPropagation();
+        n.collapsed = !n.collapsed;
+        render();
+      };
+      el.appendChild(b);
+      n.tgl = b;
+    }
+    for (var i = 0; i < n.c.length; i++) buildEls(n.c[i]);
+  }
+  buildEls(root);
+
+  /* ===== 布局:步骤自左向右排列,每步内容排在该步标题下方 ===== */
+  function layoutTree() {
+    var maxColH = 0;
+    if (!root.collapsed) {
+      var colX = MARGIN + root.w + H_GAP;
+      var y0 = MARGIN;
+      for (var i = 0; i < root.c.length; i++) {
+        var st = root.c[i];
+        st.x = colX;
+        st.y = y0;
+        var colW = st.w;
+        var colH = st.h;
+        if (!st.collapsed && st.c.length) {
+          var cx = colX + INDENT;
+          var cy = st.y + st.h + V_GAP;
+          for (var j = 0; j < st.c.length; j++) {
+            var it = st.c[j];
+            it.x = cx;
+            it.y = cy;
+            colW = Math.max(colW, it.w + INDENT);
+            cy += it.h + V_GAP;
+          }
+          colH = cy - V_GAP - st.y;
+        }
+        maxColH = Math.max(maxColH, colH);
+        colX += colW + H_GAP;
+      }
+    }
+    root.x = MARGIN;
+    root.y = MARGIN + Math.max(0, (maxColH - root.h) / 2);
+  }
+
+  /* ===== 画连线:步骤链箭头 + 步骤与内容之间的连线 ===== */
+  var DEFS = '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker></defs>';
+
+  function drawConn() {
+    var s = DEFS;
+    if (root.collapsed) { connEl.innerHTML = s; return; }
+    var steps = root.c;
+    /* 根节点 → 第1步 */
+    var st0 = steps[0];
+    var x1 = root.x + root.w, y1 = root.y + root.h / 2;
+    var x2 = st0.x, y2 = st0.y + st0.h / 2;
+    var mx = (x1 + x2) / 2;
+    s += '<path d="M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + st0.color + '" stroke-opacity="0.45" stroke-width="2"/>';
+    /* 步骤之间的箭头:上一步 → 下一步 */
+    for (var i = 1; i < steps.length; i++) {
+      var a = steps[i - 1], b = steps[i];
+      var ax = a.x + a.w + 14, ay = a.y + a.h / 2;
+      var bx = b.x - 14, by = b.y + b.h / 2;
+      s += '<path d="M' + ax + ',' + ay + ' L' + bx + ',' + by + '" fill="none" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arr)"/>';
+    }
+    /* 步骤标题 → 该步内容 */
+    for (var i = 0; i < steps.length; i++) {
+      var st = steps[i];
+      if (st.collapsed || !st.c.length) continue;
+      var sx = st.x + 10, sy = st.y + st.h;
+      for (var j = 0; j < st.c.length; j++) {
+        var it = st.c[j];
+        var iy = it.y + it.h / 2;
+        s += '<path d="M' + sx + ',' + sy + ' L' + sx + ',' + iy + ' L' + it.x + ',' + iy + '" fill="none" stroke="' + st.color + '" stroke-opacity="0.35" stroke-width="1.8"/>';
+      }
+    }
+    connEl.innerHTML = s;
+  }
+
+  /* ===== 应用位置与显隐 ===== */
+  function applyPos(n) {
+    n.el.style.left = n.x + 'px';
+    n.el.style.top = n.y + 'px';
+    n.el.style.display = 'block';
+    if (n.tgl) n.tgl.textContent = n.collapsed ? '+' : '−';
+    if (n.collapsed) {
+      for (var i = 0; i < n.c.length; i++) hideSub(n.c[i]);
+    } else {
+      for (var i = 0; i < n.c.length; i++) applyPos(n.c[i]);
+    }
+  }
+  function hideSub(n) {
+    n.el.style.display = 'none';
+    for (var i = 0; i < n.c.length; i++) hideSub(n.c[i]);
+  }
+
+  /* ===== 整体重绘 ===== */
+  function render() {
+    layoutTree();
+    applyPos(root);
+    drawConn();
+  }
+
+  /* ===== 缩放与平移 ===== */
+  var k = 1, tx = 0, ty = 0, userMoved = false;
+  function apply() { canvas.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + k + ')'; }
+
+  function zoomAt(mx, my, f) {
+    var old = k;
+    k = Math.min(MAX_K, Math.max(MIN_K, old * f));
+    var r = k / old;
+    tx = mx - (mx - tx) * r;
+    ty = my - (my - ty) * r;
+    apply();
+  }
+
+  /* 可见节点边界 */
+  function bounds() {
+    var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+    (function walk(n) {
+      minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + n.w); maxY = Math.max(maxY, n.y + n.h);
+      if (!n.collapsed) { for (var i = 0; i < n.c.length; i++) walk(n.c[i]); }
+    })(root);
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+  }
+
+  /* 适应全图:显示全部内容 */
+  function fitAll() {
+    var b = bounds();
+    var bw = b.maxX - b.minX, bh = b.maxY - b.minY;
+    var ww = wrap.clientWidth, wh = wrap.clientHeight;
+    if (!bw || !bh || !ww || !wh) return;
+    k = Math.max(MIN_K, Math.min(ww / (bw + 60), wh / (bh + 60), 1.1));
+    tx = (ww - bw * k) / 2 - b.minX * k;
+    ty = (wh - bh * k) / 2 - b.minY * k;
+    apply();
+  }
+
+  /* 适合阅读:按高度缩放,从最左端开始,向右拖动查看后续步骤 */
+  function fitRead() {
+    var b = bounds();
+    var bh = b.maxY - b.minY;
+    var wh = wrap.clientHeight;
+    if (!bh || !wh) return;
+    k = Math.min(1.1, Math.max(MIN_K, wh / (bh + 60)));
+    tx = 24 - b.minX * k;
+    ty = (wh - bh * k) / 2 - b.minY * k;
+    apply();
+  }
+
+  /* ===== 交互 ===== */
+  var dragging = false, moved = false, sx = 0, sy = 0, stx = 0, sty = 0;
+
+  wrap.addEventListener('mousedown', function (e) {
+    if (e.target && e.target.className && String(e.target.className).indexOf('tgl') >= 0) return;
+    dragging = true; moved = false;
+    sx = e.clientX; sy = e.clientY; stx = tx; sty = ty;
+    if (e.preventDefault) e.preventDefault();
+  }, false);
+
+  window.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+    if (moved) { tx = stx + dx; ty = sty + dy; userMoved = true; apply(); }
+  }, false);
+
+  window.addEventListener('mouseup', function () { dragging = false; }, false);
+
+  wrap.addEventListener('wheel', function (e) {
+    var r = wrap.getBoundingClientRect();
+    if (e.preventDefault) e.preventDefault();
+    userMoved = true;
+    zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+  }, false);
+
+  wrap.addEventListener('dblclick', function (e) {
+    if (e.target && e.target.className && String(e.target.className).indexOf('tgl') >= 0) return;
+    fitAll();
+  }, false);
+
+  document.getElementById('btn-in').onclick = function () {
+    var r = wrap.getBoundingClientRect();
+    userMoved = true;
+    zoomAt(r.width / 2, r.height / 2, 1.25);
+  };
+  document.getElementById('btn-out').onclick = function () {
+    var r = wrap.getBoundingClientRect();
+    userMoved = true;
+    zoomAt(r.width / 2, r.height / 2, 0.8);
+  };
+  document.getElementById('btn-fit').onclick = function () { userMoved = true; fitAll(); };
+  document.getElementById('btn-read').onclick = function () { userMoved = false; fitRead(); };
+  document.getElementById('btn-expand').onclick = function () {
+    (function walk(n) { n.collapsed = false; for (var i = 0; i < n.c.length; i++) walk(n.c[i]); })(root);
+    render();
+    if (userMoved) fitAll(); else fitRead();
+  };
+  document.getElementById('btn-collapse').onclick = function () {
+    (function walk(n) { n.collapsed = true; for (var i = 0; i < n.c.length; i++) walk(n.c[i]); })(root);
+    render();
+    if (userMoved) fitAll(); else fitRead();
+  };
+
+  window.addEventListener('resize', function () { if (userMoved) fitAll(); else fitRead(); }, false);
+
+  /* ===== 启动 ===== */
+  render();
+  fitRead();
+})();
+</script>
+
+</body>
+</html>

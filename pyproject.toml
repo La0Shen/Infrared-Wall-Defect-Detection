@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wall-defect-single"
+version = "0.2.0"
+description = "外墙热红外缺陷检测 · 方案一(单帧基线管线)"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "numpy>=1.22",
+  "opencv-python>=4.6",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+# DJI 官方热分析 SDK(仅 Windows):解析 R-JPEG 真实温度
+dji = ["dji-thermal-sdk"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

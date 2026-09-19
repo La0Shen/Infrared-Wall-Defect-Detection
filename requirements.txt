@@ -1,0 +1,5 @@
+# 必要依赖:运行检测管线必需
+numpy>=1.22
+opencv-python>=4.6
+PyYAML>=6.0
+ 

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 测试与工具缓存
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 数据(原始 R-JPEG 与处理结果不入库)
+data/raw/*
+!data/raw/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# IDE
+.idea/
+.vscode/

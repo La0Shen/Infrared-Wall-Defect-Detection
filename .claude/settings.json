@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe scripts/run_inspection.py --input data/raw/demo/demo.npy)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(awk '{print $6, $7, $9}')",
+      "Bash(cygpath -w /tmp/demo_baseline)",
+      "Bash(.venv/Scripts/python.exe /tmp/probe_dbg.py)",
+      "Bash(.venv/Scripts/python.exe /tmp/probe_edge2.py)",
+      "Bash(.venv/Scripts/python.exe /tmp/probe_frame2.py)",
+      "Bash(.venv/Scripts/python.exe -m pytest --collect-only -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest --collect-only)",
+      "Bash(.venv/Scripts/python.exe scripts/run_inspection.py --input data/raw/test01.JPG --output /c/Users/16638/AppData/Local/Temp/rm_thick_on)",
+      "Bash(sed 's/^ enabled: 1/ enabled: 0/' config/defaults.yaml)",
+      "Bash(.venv/Scripts/python.exe scripts/run_inspection.py --input data/raw/test01.JPG --output /c/Users/16638/AppData/Local/Temp/rm_off2 --config /tmp/rm_off.yaml)",
+      "Bash(.venv/Scripts/python.exe /tmp/probe_border.py)"
+    ]
+  }
+}
