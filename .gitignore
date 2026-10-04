@@ -23,8 +23,8 @@ dataset/
 .idea/
 .vscode/
 
-# 文档
-doc/
+# 文档(不推送文档,只保留基础代码)
+docs/
 
 # 杂物
 修改文件.txt
