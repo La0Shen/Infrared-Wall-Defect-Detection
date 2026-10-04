@@ -17,7 +17,16 @@ data/raw/*
 !data/raw/.gitkeep
 data/output/*
 !data/output/.gitkeep
+dataset/
 
 # IDE
 .idea/
 .vscode/
+
+# 杂物
+修改文件.txt
+CLAUDE.md
+frame_0.jpg
+thermal_gray_pipeline(1).py
+zhangyang.pdf
+Infrared-Wall-Defect-Detection-main/
