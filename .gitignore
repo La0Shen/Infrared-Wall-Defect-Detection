@@ -23,6 +23,9 @@ dataset/
 .idea/
 .vscode/
 
+# 文档
+doc/
+
 # 杂物
 修改文件.txt
 CLAUDE.md
